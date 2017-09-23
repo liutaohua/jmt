@@ -3,10 +3,7 @@ package cc.tpark.router;
 import cc.tpark.commons.InnerMsg;
 import cc.tpark.connections.Connections;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ProtocolCtl {
     private Map<String, List<String>> topics = new HashMap<>();
@@ -62,5 +59,9 @@ public class ProtocolCtl {
 
     public List<String> getMembers(String topic) {
         return topics.get(topic);
+    }
+
+    public Set<String> getTopics() {
+        return topics.keySet();
     }
 }
