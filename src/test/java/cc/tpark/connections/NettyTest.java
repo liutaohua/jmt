@@ -1,18 +1,26 @@
 package cc.tpark.connections;
 
+import com.sun.javafx.UnmodifiableArrayList;
 import io.netty.buffer.AbstractReferenceCountedByteBuf;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.mqtt.*;
 import org.junit.Test;
 import sun.nio.ch.DirectBuffer;
 
+import java.util.ArrayList;
+
 public class NettyTest {
 
     @Test
     public void test() {
-        MqttFixedHeader header = new MqttFixedHeader(MqttMessageType.PINGREQ, false,
-                MqttQoS.EXACTLY_ONCE, false, 1);
-        MqttMessage mqttMessage = new MqttMessage(header);
+        MqttFixedHeader header = new MqttFixedHeader(MqttMessageType.SUBSCRIBE, false,
+                MqttQoS.AT_LEAST_ONCE, false, 1);
+
+        ArrayList<MqttTopicSubscription> mqttTopicSubscriptions = new ArrayList<>();
+        MqttTopicSubscription ms = new MqttTopicSubscription("aaa", MqttQoS.AT_LEAST_ONCE);
+        mqttTopicSubscriptions.add(ms);
+
+        MqttSubscribeMessage mqttMessage = new MqttSubscribeMessage(header, MqttMessageIdVariableHeader.from(11), new MqttSubscribePayload(mqttTopicSubscriptions));
         EmbeddedChannel channel = new EmbeddedChannel(MqttEncoder.INSTANCE);
         channel.writeOutbound(mqttMessage);
         AbstractReferenceCountedByteBuf o = channel.readOutbound();
