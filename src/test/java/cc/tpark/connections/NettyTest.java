@@ -13,7 +13,6 @@ public class NettyTest {
         MqttFixedHeader header = new MqttFixedHeader(MqttMessageType.PINGREQ, false,
                 MqttQoS.EXACTLY_ONCE, false, 1);
         MqttMessage mqttMessage = new MqttMessage(header);
-
         EmbeddedChannel channel = new EmbeddedChannel(MqttEncoder.INSTANCE);
         channel.writeOutbound(mqttMessage);
         AbstractReferenceCountedByteBuf o = channel.readOutbound();

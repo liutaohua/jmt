@@ -12,7 +12,7 @@ public class InboundHandler extends SimpleChannelInboundHandler<MqttMessage> {
     Router router;
 
     protected void channelRead0(ChannelHandlerContext ctx, MqttMessage msg) throws Exception {
-        //        InetSocketAddress insocket = (InetSocketAddress) ctx.channel().remoteAddress();
+        InetSocketAddress insocket = (InetSocketAddress) ctx.channel().remoteAddress();
         MqttMessageType mqttMessageType = msg.fixedHeader().messageType();
         if (mqttMessageType == MqttMessageType.CONNECT) {
             // todo: 发送回复
@@ -25,20 +25,20 @@ public class InboundHandler extends SimpleChannelInboundHandler<MqttMessage> {
             // todo: 退订方法
             // todo: 回复退订结果
             System.out.println("退订方法");
-        } else if (mqttMessageType == MqttMessageType.PUBLISH){
+        } else if (mqttMessageType == MqttMessageType.PUBLISH) {
             // todo: 发布信息方法
             System.out.println("发布信息方法");
         }
         System.out.println(msg.toString());
     }
 
-    private void subscribe(MqttMessage msg){
+    private void subscribe(InetSocketAddress insocket, MqttMessage msg) {
         MqttSubscribePayload payload = (MqttSubscribePayload) msg.payload();
         List<MqttTopicSubscription> mqttTopicSubscriptions = payload.topicSubscriptions();
         for (MqttTopicSubscription mts : mqttTopicSubscriptions) {
             String topicName = mts.topicName();
-//            MqttQoS mqttQoS = mts.qualityOfService();
-//            router.subscribe(topicName,);
+            //            MqttQoS mqttQoS = mts.qualityOfService();
+            //            router.subscribe(topicName,);
         }
     }
 }
