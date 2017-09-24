@@ -1,6 +1,7 @@
 package cc.tpark.connections;
 
 import cc.tpark.commons.InnerMsg;
+import com.sun.xml.internal.bind.v2.model.core.ID;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.util.HashMap;
@@ -22,5 +23,9 @@ public enum SimpleConnections implements Connections {
 
     public void addConnect(String ip, ChannelHandlerContext ctx) {
         cons.put(ip, ctx);
+    }
+
+    public void removeConnect(String ip){
+        cons.remove(ip);
     }
 }
