@@ -1,15 +1,17 @@
 package cc.tpark.connections;
 
+import cc.tpark.commons.InnerMsg;
 import cc.tpark.router.Router;
 import cc.tpark.router.SimpleRouter;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.mqtt.MqttMessage;
-import io.netty.handler.codec.mqtt.MqttMessageType;
-import io.netty.handler.codec.mqtt.MqttSubscribePayload;
-import io.netty.handler.codec.mqtt.MqttTopicSubscription;
+import io.netty.handler.codec.mqtt.*;
 
+import java.net.InetSocketAddress;
 import java.util.List;
+
+import static io.netty.handler.codec.mqtt.MqttQoS.AT_MOST_ONCE;
 
 public class InboundHandler extends SimpleChannelInboundHandler<MqttMessage> {
     Router router = new SimpleRouter(SimpleConnections.INSTENCE);
@@ -19,36 +21,70 @@ public class InboundHandler extends SimpleChannelInboundHandler<MqttMessage> {
         SimpleConnections.INSTENCE.addConnect(id, ctx);
 
         MqttMessageType mqttMessageType = msg.fixedHeader().messageType();
-        if (mqttMessageType == MqttMessageType.CONNECT) {
-            // todo: 发送回复
-            System.out.println("发送回复");
-        } else if (mqttMessageType == MqttMessageType.SUBSCRIBE) {
-            // todo: 订阅方法
-            // todo: 回复订阅结果
-            MqttSubscribePayload payload = (MqttSubscribePayload) msg.payload();
-            List<MqttTopicSubscription> mqttTopicSubscriptions = payload.topicSubscriptions();
-            for (MqttTopicSubscription topic : mqttTopicSubscriptions) {
-                router.subscribe(topic.topicName(), id);
-            }
-            System.out.println("订阅方法");
-        } else if (mqttMessageType == MqttMessageType.UNSUBSCRIBE) {
-            // todo: 退订方法
-            // todo: 回复退订结果
-            System.out.println("退订方法");
-        } else if (mqttMessageType == MqttMessageType.PUBLISH) {
-            // todo: 发布信息方法
-            System.out.println("发布信息方法");
+        switch (mqttMessageType) {
+            case CONNECT:
+                // todo: 发送回复
+                System.out.println("发送回复");
+                break;
+            case SUBSCRIBE:
+                // todo: 订阅方法
+                // todo: 回复订阅结果
+                subscribe(ctx, (MqttSubscribeMessage) msg);
+                System.out.println("成功订阅");
+                break;
+            case UNSUBSCRIBE:
+                // todo: 退订方法
+                // todo: 回复退订结果
+                System.out.println("退订方法");
+                break;
+            case PUBLISH:
+                // todo: 发布信息方法
+                publish(ctx, (MqttPublishMessage) msg);
+                System.out.println("发布信息方法");
+                break;
+            default:
+                break;
         }
         System.out.println(msg.toString());
     }
 
-//    private void subscribe(InetSocketAddress insocket, MqttMessage msg) {
-//        MqttSubscribePayload payload = (MqttSubscribePayload) msg.payload();
-//        List<MqttTopicSubscription> mqttTopicSubscriptions = payload.topicSubscriptions();
-//        for (MqttTopicSubscription mts : mqttTopicSubscriptions) {
-//            String topicName = mts.topicName();
-//            //            MqttQoS mqttQoS = mts.qualityOfService();
-//            //            router.subscribe(topicName,);
-//        }
-//    }
+    private void subscribe(ChannelHandlerContext ctx, MqttSubscribeMessage msg) {
+        String id = ctx.channel().id().asLongText();
+        MqttSubscribePayload payload = msg.payload();
+        List<MqttTopicSubscription> mqttTopicSubscriptions = payload.topicSubscriptions();
+        int messageId = msg.variableHeader().messageId();
+        for (MqttTopicSubscription mts : mqttTopicSubscriptions) {
+            String topicName = mts.topicName();
+            //            MqttQoS mqttQoS = mts.qualityOfService();
+            router.subscribe(topicName, id);
+        }
+
+        //todo: modify suback (the MqttSubAckPayload )
+        MqttMessage mqttSubackMessage = MqttMessageFactory.newMessage(
+                new MqttFixedHeader(MqttMessageType.SUBACK, false, AT_MOST_ONCE, false, 0),
+                MqttMessageIdVariableHeader.from(messageId), new MqttSubAckPayload(0));
+
+        ctx.channel().write(mqttSubackMessage);
+    }
+
+    private void publish(ChannelHandlerContext ctx, MqttPublishMessage msg) {
+        String id = ctx.channel().id().asLongText();
+        String topicName = msg.variableHeader().topicName();
+        int messageId = msg.variableHeader().messageId();
+        ByteBuf byteBuf = msg.payload();
+        InnerMsg innerMsg = new InnerMsg();
+        //消息来源的IP
+        innerMsg.setIp(id);
+        innerMsg.setTopic(topicName);
+        innerMsg.setMsg(byteBuf);
+
+        router.publish(innerMsg);
+
+        //todo: modify suback (the MqttSubAckPayload )
+        MqttMessage mqttPubackMessage = MqttMessageFactory.newMessage(
+                new MqttFixedHeader(MqttMessageType.PUBACK, false, AT_MOST_ONCE, false, 0),
+                MqttMessageIdVariableHeader.from(messageId), null);
+
+        ctx.channel().write(mqttPubackMessage);
+    }
 }
