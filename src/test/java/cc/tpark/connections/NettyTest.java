@@ -1,11 +1,9 @@
 package cc.tpark.connections;
 
-import com.sun.javafx.UnmodifiableArrayList;
 import io.netty.buffer.AbstractReferenceCountedByteBuf;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.mqtt.*;
 import org.junit.Test;
-import sun.nio.ch.DirectBuffer;
 
 import java.util.ArrayList;
 

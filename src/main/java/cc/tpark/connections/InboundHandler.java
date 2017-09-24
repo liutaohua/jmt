@@ -8,7 +8,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.mqtt.*;
 
-import java.net.InetSocketAddress;
 import java.util.List;
 
 import static io.netty.handler.codec.mqtt.MqttQoS.AT_MOST_ONCE;
@@ -16,6 +15,7 @@ import static io.netty.handler.codec.mqtt.MqttQoS.AT_MOST_ONCE;
 public class InboundHandler extends SimpleChannelInboundHandler<MqttMessage> {
     Router router = new SimpleRouter(SimpleConnections.INSTENCE);
 
+    @Override
     protected void channelRead0(ChannelHandlerContext ctx, MqttMessage msg) throws Exception {
         MqttMessageType mqttMessageType = msg.fixedHeader().messageType();
         switch (mqttMessageType) {
@@ -60,14 +60,12 @@ public class InboundHandler extends SimpleChannelInboundHandler<MqttMessage> {
     private void connection(ChannelHandlerContext ctx, MqttConnectMessage msg) {
         String id = ctx.channel().id().asLongText();
         SimpleConnections.INSTENCE.addConnect(id, ctx);
-        MqttConnectPayload payload = msg.payload();
 
-        MqttMessage mqttMessage = MqttMessageFactory.newMessage(
-                new MqttFixedHeader(MqttMessageType.CONNACK, false, AT_MOST_ONCE, false, 0), null,
-                new MqttConnectPayload(payload.clientIdentifier(), payload.willTopic(),
-                        payload.willMessage(), payload.userName(), payload.password()));
+        MqttFixedHeader header = new MqttFixedHeader(MqttMessageType.CONNACK, false, AT_MOST_ONCE, false, 0);
+        MqttConnAckVariableHeader mqttConnAckVariableHeader = new MqttConnAckVariableHeader(MqttConnectReturnCode.CONNECTION_ACCEPTED, false);
+        MqttConnAckMessage mqttConnAckMessage = new MqttConnAckMessage(header, mqttConnAckVariableHeader);
 
-        ctx.channel().write(mqttMessage);
+        ctx.channel().writeAndFlush(mqttConnAckMessage);
     }
 
     /**
