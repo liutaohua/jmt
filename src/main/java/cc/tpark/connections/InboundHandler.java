@@ -15,6 +15,28 @@ import static io.netty.handler.codec.mqtt.MqttQoS.AT_MOST_ONCE;
 public class InboundHandler extends SimpleChannelInboundHandler<MqttMessage> {
     Router router = new SimpleRouter(SimpleConnections.INSTENCE);
 
+
+//    @Override
+//    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+//        super.userEventTriggered(ctx, evt);
+//        if (IdleStateEvent.class.isAssignableFrom(evt.getClass())) {
+//            IdleStateEvent event = (IdleStateEvent) evt;
+//            if (event.state() == IdleState.WRITER_IDLE) {
+//                MqttMessage mqttMessage = new MqttMessage(
+//                        new MqttFixedHeader(MqttMessageType.PINGRESP, false,
+//                                MqttQoS.EXACTLY_ONCE, false, 0));
+//
+//                ctx.writeAndFlush(mqttMessage);
+//            }
+////            if (event.state() == IdleState.READER_IDLE)
+////                System.out.println("read idle");
+////            else if (event.state() == IdleState.WRITER_IDLE)
+////                System.out.println("write idle");
+////            else if (event.state() == IdleState.ALL_IDLE)
+////                System.out.println("all idle");
+//        }
+//    }
+
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, MqttMessage msg) throws Exception {
         MqttMessageType mqttMessageType = msg.fixedHeader().messageType();
@@ -46,7 +68,16 @@ public class InboundHandler extends SimpleChannelInboundHandler<MqttMessage> {
                 disconnect(ctx, (MqttConnectMessage) msg);
                 System.out.println("发布信息方法");
                 break;
+            case PINGREQ:
+                MqttMessage mqttMessage = new MqttMessage(
+                        new MqttFixedHeader(MqttMessageType.PINGRESP, false,
+                                MqttQoS.EXACTLY_ONCE, false, 0));
+
+                ctx.writeAndFlush(mqttMessage);
+                System.out.println("回复心跳");
+                break;
             default:
+                System.out.println(mqttMessageType);
                 break;
         }
     }
@@ -146,14 +177,15 @@ public class InboundHandler extends SimpleChannelInboundHandler<MqttMessage> {
         //消息来源的IP
         innerMsg.setIp(id);
         innerMsg.setTopic(topicName);
-        innerMsg.setMsg(byteBuf);
+        innerMsg.setMsg(byteBuf.copy());
 
         router.publish(innerMsg);
+        if (msg.fixedHeader().qosLevel() != MqttQoS.AT_MOST_ONCE) {
+            MqttMessage mqttMessage = MqttMessageFactory.newMessage(
+                    new MqttFixedHeader(MqttMessageType.PUBACK, false, AT_MOST_ONCE, false, 0),
+                    MqttMessageIdVariableHeader.from(messageId), null);
 
-        MqttMessage mqttMessage = MqttMessageFactory.newMessage(
-                new MqttFixedHeader(MqttMessageType.PUBACK, false, AT_MOST_ONCE, false, 0),
-                MqttMessageIdVariableHeader.from(messageId), null);
-
-        ctx.channel().writeAndFlush(mqttMessage);
+            ctx.channel().writeAndFlush(mqttMessage);
+        }
     }
 }
