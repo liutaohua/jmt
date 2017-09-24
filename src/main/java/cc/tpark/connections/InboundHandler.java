@@ -61,9 +61,12 @@ public class InboundHandler extends SimpleChannelInboundHandler<MqttMessage> {
         String id = ctx.channel().id().asLongText();
         SimpleConnections.INSTENCE.addConnect(id, ctx);
 
-        MqttFixedHeader header = new MqttFixedHeader(MqttMessageType.CONNACK, false, AT_MOST_ONCE, false, 0);
-        MqttConnAckVariableHeader mqttConnAckVariableHeader = new MqttConnAckVariableHeader(MqttConnectReturnCode.CONNECTION_ACCEPTED, false);
-        MqttConnAckMessage mqttConnAckMessage = new MqttConnAckMessage(header, mqttConnAckVariableHeader);
+        MqttFixedHeader header =
+                new MqttFixedHeader(MqttMessageType.CONNACK, false, AT_MOST_ONCE, false, 0);
+        MqttConnAckVariableHeader mqttConnAckVariableHeader =
+                new MqttConnAckVariableHeader(MqttConnectReturnCode.CONNECTION_ACCEPTED, false);
+        MqttConnAckMessage mqttConnAckMessage =
+                new MqttConnAckMessage(header, mqttConnAckVariableHeader);
 
         ctx.channel().writeAndFlush(mqttConnAckMessage);
     }
@@ -101,7 +104,7 @@ public class InboundHandler extends SimpleChannelInboundHandler<MqttMessage> {
                 new MqttFixedHeader(MqttMessageType.SUBACK, false, AT_MOST_ONCE, false, 0),
                 MqttMessageIdVariableHeader.from(messageId), new MqttSubAckPayload(0));
 
-        ctx.channel().write(mqttSubackMessage);
+        ctx.channel().writeAndFlush(mqttSubackMessage);
     }
 
     /**
@@ -125,7 +128,7 @@ public class InboundHandler extends SimpleChannelInboundHandler<MqttMessage> {
                 MqttMessageIdVariableHeader.from(messageId),
                 new MqttUnsubscribePayload(unsubTopics));
 
-        ctx.channel().write(mqttMessage);
+        ctx.channel().writeAndFlush(mqttMessage);
     }
 
     /**
@@ -151,6 +154,6 @@ public class InboundHandler extends SimpleChannelInboundHandler<MqttMessage> {
                 new MqttFixedHeader(MqttMessageType.PUBACK, false, AT_MOST_ONCE, false, 0),
                 MqttMessageIdVariableHeader.from(messageId), null);
 
-        ctx.channel().write(mqttMessage);
+        ctx.channel().writeAndFlush(mqttMessage);
     }
 }
