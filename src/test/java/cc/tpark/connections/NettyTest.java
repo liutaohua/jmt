@@ -1,5 +1,6 @@
 package cc.tpark.connections;
 
+import cc.tpark.connections.handler.mqtt.MqttInboundHandler;
 import io.netty.buffer.AbstractReferenceCountedByteBuf;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.mqtt.*;
@@ -28,7 +29,7 @@ public class NettyTest {
 //        inBoundChannel.writeInbound(o);
 //        Object o1 = inBoundChannel.readInbound();
 //        System.out.println(o1);
-        EmbeddedChannel handler = new EmbeddedChannel(new MqttDecoder(), new InboundHandler());
+        EmbeddedChannel handler = new EmbeddedChannel(new MqttDecoder(), new MqttInboundHandler());
         handler.writeInbound(o);
 
     }
