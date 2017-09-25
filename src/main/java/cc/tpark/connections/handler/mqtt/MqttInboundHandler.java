@@ -9,7 +9,7 @@ public class MqttInboundHandler extends JMTHandler<MqttMessage> {
 
     private MqttAction mqttAction;
 
-    MqttInboundHandler() {
+    public MqttInboundHandler() {
         mqttAction = new MqttAction();
     }
 
