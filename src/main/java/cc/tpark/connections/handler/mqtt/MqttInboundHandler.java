@@ -60,11 +60,12 @@ public class MqttInboundHandler extends JMTHandler<MqttMessage> {
                 System.out.println("发布信息方法");
                 break;
             case PINGREQ:
-                MqttMessage mqttMessage = new MqttMessage(
-                        new MqttFixedHeader(MqttMessageType.PINGRESP, false, MqttQoS.EXACTLY_ONCE,
-                                false, 0));
-                ctx.writeAndFlush(mqttMessage);
+                mqttAction.pingreq(ctx);
                 System.out.println("回复心跳");
+                break;
+            case PUBREL:
+                mqttAction.pubrel(ctx, msg);
+                System.out.println("PUBREL回复");
                 break;
             default:
                 System.out.println(mqttMessageType);

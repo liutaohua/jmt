@@ -9,7 +9,7 @@ import io.netty.handler.codec.mqtt.*;
 
 import java.util.List;
 
-import static io.netty.handler.codec.mqtt.MqttQoS.AT_MOST_ONCE;
+import static io.netty.handler.codec.mqtt.MqttQoS.*;
 
 public class MqttAction extends JMSAction {
 
@@ -110,13 +110,46 @@ public class MqttAction extends JMSAction {
         innerMsg.setTopic(topicName);
         innerMsg.setMsg(byteBuf.copy());
 
-        router.publish(innerMsg);
-        if (msg.fixedHeader().qosLevel() != MqttQoS.AT_MOST_ONCE) {
-            MqttMessage mqttMessage = MqttMessageFactory.newMessage(
-                    new MqttFixedHeader(MqttMessageType.PUBACK, false, AT_MOST_ONCE, false, 0),
-                    MqttMessageIdVariableHeader.from(messageId), null);
-
-            ctx.channel().writeAndFlush(mqttMessage);
+        MqttFixedHeader mqttFixedHeader = null;
+        switch (msg.fixedHeader().qosLevel()) {
+            case AT_LEAST_ONCE:
+                mqttFixedHeader =
+                        new MqttFixedHeader(MqttMessageType.PUBACK, false, AT_LEAST_ONCE, false, 0);
+                break;
+            case EXACTLY_ONCE:
+                mqttFixedHeader =
+                        new MqttFixedHeader(MqttMessageType.PUBREC, false, EXACTLY_ONCE, false, 0);
+                msgMap.put(messageId, msg);
+                break;
+            case AT_MOST_ONCE:
+            default:
         }
+        if (mqttFixedHeader == null) {
+            return;
+        }
+
+        router.publish(innerMsg);
+
+        MqttMessage mqttMessage = MqttMessageFactory
+                .newMessage(mqttFixedHeader, MqttMessageIdVariableHeader.from(messageId), null);
+
+        ctx.channel().writeAndFlush(mqttMessage);
+    }
+
+    public void pingreq(ChannelHandlerContext ctx) {
+        MqttMessage mqttMessage = new MqttMessage(
+                new MqttFixedHeader(MqttMessageType.PINGRESP, false, EXACTLY_ONCE, false,
+                        0));
+        ctx.writeAndFlush(mqttMessage);
+    }
+
+    public void pubrel(ChannelHandlerContext ctx, MqttMessage msg) throws Exception {
+        String id = ctx.channel().id().asLongText();
+        int messageId = ((MqttMessageIdVariableHeader) msg.variableHeader()).messageId();
+        msgMap.remove(messageId);
+        MqttMessage mqttMessage = MqttMessageFactory.newMessage(
+                new MqttFixedHeader(MqttMessageType.PUBCOMP, false, EXACTLY_ONCE, false, 0),
+                MqttMessageIdVariableHeader.from(messageId), null);
+        ctx.channel().writeAndFlush(mqttMessage);
     }
 }
