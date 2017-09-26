@@ -41,6 +41,7 @@ public class MqttAction extends JMSAction {
      */
     public void disconnect(ChannelHandlerContext ctx, MqttConnectMessage msg) {
         String id = ctx.channel().id().asLongText();
+        ctx.close();
         SimpleConnections.INSTENCE.removeConnect(id);
     }
 
@@ -65,7 +66,6 @@ public class MqttAction extends JMSAction {
         MqttMessage mqttSubackMessage = MqttMessageFactory.newMessage(
                 new MqttFixedHeader(MqttMessageType.SUBACK, false, AT_MOST_ONCE, false, 0),
                 MqttMessageIdVariableHeader.from(messageId), new MqttSubAckPayload(0));
-
         ctx.channel().writeAndFlush(mqttSubackMessage);
     }
 
@@ -89,7 +89,6 @@ public class MqttAction extends JMSAction {
                 new MqttFixedHeader(MqttMessageType.UNSUBACK, false, AT_MOST_ONCE, false, 0),
                 MqttMessageIdVariableHeader.from(messageId),
                 new MqttUnsubscribePayload(unsubTopics));
-
         ctx.channel().writeAndFlush(mqttMessage);
     }
 
@@ -113,6 +112,7 @@ public class MqttAction extends JMSAction {
         MqttFixedHeader mqttFixedHeader = null;
         switch (msg.fixedHeader().qosLevel()) {
             case AT_LEAST_ONCE:
+                router.publish(innerMsg);
                 mqttFixedHeader =
                         new MqttFixedHeader(MqttMessageType.PUBACK, false, AT_LEAST_ONCE, false, 0);
                 break;
@@ -125,6 +125,7 @@ public class MqttAction extends JMSAction {
                 break;
             case AT_MOST_ONCE:
             default:
+                router.publish(innerMsg);
         }
         if (mqttFixedHeader == null) {
             return;
@@ -132,7 +133,6 @@ public class MqttAction extends JMSAction {
 
         MqttMessage mqttMessage = MqttMessageFactory
                 .newMessage(mqttFixedHeader, MqttMessageIdVariableHeader.from(messageId), null);
-
         ctx.channel().writeAndFlush(mqttMessage);
     }
 

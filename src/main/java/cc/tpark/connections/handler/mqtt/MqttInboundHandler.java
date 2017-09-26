@@ -41,7 +41,7 @@ public class MqttInboundHandler extends JMTHandler<MqttMessage> {
         switch (mqttMessageType) {
             case CONNECT:
                 mqttAction.connection(ctx, (MqttConnectMessage) msg);
-                System.out.println("发送回复");
+                System.out.println("连接成功");
                 break;
             case SUBSCRIBE:
                 mqttAction.subscribe(ctx, (MqttSubscribeMessage) msg);
