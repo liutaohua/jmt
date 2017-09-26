@@ -20,7 +20,7 @@ public class MqttAction extends JMSAction {
      * @param msg
      */
     public void connection(ChannelHandlerContext ctx, MqttConnectMessage msg) {
-        String id = ctx.channel().id().asLongText();
+        String id = "mqtt:" + ctx.channel().id().asLongText();
         SimpleConnections.INSTENCE.addConnect(id, ctx);
 
         MqttFixedHeader header =
@@ -40,7 +40,7 @@ public class MqttAction extends JMSAction {
      * @param msg
      */
     public void disconnect(ChannelHandlerContext ctx, MqttConnectMessage msg) {
-        String id = ctx.channel().id().asLongText();
+        String id = "mqtt:" + ctx.channel().id().asLongText();
         ctx.close();
         SimpleConnections.INSTENCE.removeConnect(id);
     }
@@ -52,7 +52,7 @@ public class MqttAction extends JMSAction {
      * @param msg
      */
     public void subscribe(ChannelHandlerContext ctx, MqttSubscribeMessage msg) {
-        String id = ctx.channel().id().asLongText();
+        String id = "mqtt:" + ctx.channel().id().asLongText();
         MqttSubscribePayload payload = msg.payload();
         List<MqttTopicSubscription> mqttTopicSubscriptions = payload.topicSubscriptions();
         int messageId = msg.variableHeader().messageId();
@@ -76,7 +76,7 @@ public class MqttAction extends JMSAction {
      * @param msg
      */
     public void unsubscribe(ChannelHandlerContext ctx, MqttUnsubscribeMessage msg) {
-        String id = ctx.channel().id().asLongText();
+        String id = "mqtt:" + ctx.channel().id().asLongText();
         MqttUnsubscribePayload payload = msg.payload();
         List<String> unsubTopics = payload.topics();
         int messageId = msg.variableHeader().messageId();
@@ -99,7 +99,7 @@ public class MqttAction extends JMSAction {
      * @param msg
      */
     public void publish(ChannelHandlerContext ctx, MqttPublishMessage msg) {
-        String id = ctx.channel().id().asLongText();
+        String id = "mqtt:" + ctx.channel().id().asLongText();
         String topicName = msg.variableHeader().topicName();
         int messageId = msg.variableHeader().messageId();
         ByteBuf byteBuf = msg.payload();
@@ -142,9 +142,11 @@ public class MqttAction extends JMSAction {
      * @param ctx
      */
     public void pingreq(ChannelHandlerContext ctx) {
+        String id = "mqtt:" + ctx.channel().id().asLongText();
         MqttMessage mqttMessage = new MqttMessage(
                 new MqttFixedHeader(MqttMessageType.PINGRESP, false, EXACTLY_ONCE, false, 0));
         ctx.writeAndFlush(mqttMessage);
+        SimpleConnections.INSTENCE.restartBreaker(id);
     }
 
     /**
@@ -154,7 +156,7 @@ public class MqttAction extends JMSAction {
      * @param msg
      */
     public void pubrel(ChannelHandlerContext ctx, MqttMessage msg) throws Exception {
-        String id = ctx.channel().id().asLongText();
+        String id = "mqtt:" + ctx.channel().id().asLongText();
         int messageId = ((MqttMessageIdVariableHeader) msg.variableHeader()).messageId();
         InnerMsg innerMsg = null;
         if ((innerMsg = (InnerMsg) msgMap.get(id + "-" + messageId)) != null) {
