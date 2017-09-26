@@ -1,6 +1,7 @@
 package cc.tpark.connections;
 
 import cc.tpark.commons.InnerMsg;
+import io.netty.channel.ChannelHandlerContext;
 
 public interface Connections {
     /**
@@ -9,5 +10,21 @@ public interface Connections {
      * @param ip
      * @param msg
      */
-    public void sendMsg(String ip, InnerMsg msg);
+    void sendMsg(String ip, InnerMsg msg);
+
+    /**
+     * 新增连接
+     *
+     * @param ip
+     * @param ctx
+     */
+    boolean addConnect(String ip, ChannelHandlerContext ctx);
+
+    /**
+     * 删除连接
+     *
+     * @param ip
+     */
+    void removeConnect(String ip);
+
 }
