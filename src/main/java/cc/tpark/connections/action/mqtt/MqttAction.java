@@ -119,7 +119,9 @@ public class MqttAction extends JMSAction {
             case EXACTLY_ONCE:
                 mqttFixedHeader =
                         new MqttFixedHeader(MqttMessageType.PUBREC, false, EXACTLY_ONCE, false, 0);
-                msgMap.put(messageId, msg);
+                if (!msgMap.containsKey(id + "-" + messageId)) {
+                    msgMap.put(id + "-" + messageId, innerMsg);
+                }
                 break;
             case AT_MOST_ONCE:
             default:
@@ -128,25 +130,37 @@ public class MqttAction extends JMSAction {
             return;
         }
 
-        router.publish(innerMsg);
-
         MqttMessage mqttMessage = MqttMessageFactory
                 .newMessage(mqttFixedHeader, MqttMessageIdVariableHeader.from(messageId), null);
 
         ctx.channel().writeAndFlush(mqttMessage);
     }
 
+    /**
+     * 心跳回复
+     *
+     * @param ctx
+     */
     public void pingreq(ChannelHandlerContext ctx) {
         MqttMessage mqttMessage = new MqttMessage(
-                new MqttFixedHeader(MqttMessageType.PINGRESP, false, EXACTLY_ONCE, false,
-                        0));
+                new MqttFixedHeader(MqttMessageType.PINGRESP, false, EXACTLY_ONCE, false, 0));
         ctx.writeAndFlush(mqttMessage);
     }
 
+    /**
+     * 发布确认（QOS == 2）
+     *
+     * @param ctx
+     * @param msg
+     */
     public void pubrel(ChannelHandlerContext ctx, MqttMessage msg) throws Exception {
         String id = ctx.channel().id().asLongText();
         int messageId = ((MqttMessageIdVariableHeader) msg.variableHeader()).messageId();
-        msgMap.remove(messageId);
+        InnerMsg innerMsg = null;
+        if ((innerMsg = (InnerMsg) msgMap.get(id + "-" + messageId)) != null) {
+            router.publish(innerMsg);
+            msgMap.remove(id + "-" + messageId);
+        }
         MqttMessage mqttMessage = MqttMessageFactory.newMessage(
                 new MqttFixedHeader(MqttMessageType.PUBCOMP, false, EXACTLY_ONCE, false, 0),
                 MqttMessageIdVariableHeader.from(messageId), null);
