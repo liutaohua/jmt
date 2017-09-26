@@ -21,16 +21,20 @@ public class MqttAction extends JMSAction {
      */
     public void connection(ChannelHandlerContext ctx, MqttConnectMessage msg) {
         String id = "mqtt:" + ctx.channel().id().asLongText();
-        SimpleConnections.INSTENCE.addConnect(id, ctx);
+        if (SimpleConnections.INSTENCE.addConnect(id, ctx)) {
 
-        MqttFixedHeader header =
-                new MqttFixedHeader(MqttMessageType.CONNACK, false, AT_MOST_ONCE, false, 0);
-        MqttConnAckVariableHeader mqttConnAckVariableHeader =
-                new MqttConnAckVariableHeader(MqttConnectReturnCode.CONNECTION_ACCEPTED, false);
-        MqttConnAckMessage mqttConnAckMessage =
-                new MqttConnAckMessage(header, mqttConnAckVariableHeader);
+            MqttFixedHeader header =
+                    new MqttFixedHeader(MqttMessageType.CONNACK, false, AT_MOST_ONCE, false, 0);
+            MqttConnAckVariableHeader mqttConnAckVariableHeader =
+                    new MqttConnAckVariableHeader(MqttConnectReturnCode.CONNECTION_ACCEPTED, false);
+            MqttConnAckMessage mqttConnAckMessage =
+                    new MqttConnAckMessage(header, mqttConnAckVariableHeader);
 
-        ctx.channel().writeAndFlush(mqttConnAckMessage);
+            ctx.channel().writeAndFlush(mqttConnAckMessage);
+        } else {
+            ctx.close();
+            System.out.println("连接数已达上限");
+        }
     }
 
     /**
