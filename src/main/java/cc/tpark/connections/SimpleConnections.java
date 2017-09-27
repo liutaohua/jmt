@@ -21,8 +21,13 @@ public enum SimpleConnections implements Connections {
 
     private Map<String, Thread> breakers = new ConcurrentHashMap<>();
 
+    //Current connection number
     private AtomicInteger connectCount = new AtomicInteger(0);
 
+    // Connection timeout time in milliseconds
+    private final long connectTimeOutMillis = 60 * 1000;
+
+    //maximum connection
     private final int connectSize = 2;
 
     @Override
@@ -66,7 +71,7 @@ public enum SimpleConnections implements Connections {
             while (status == 0) {
                 status = 2;
                 try {
-                    sleep(60 * 1000);
+                    sleep(connectTimeOutMillis);
                 } catch (InterruptedException e) {
                     status = 0;
                     //                    System.out.println("breaker is restart");
