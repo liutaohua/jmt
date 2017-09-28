@@ -2,6 +2,7 @@ package cc.tpark.router;
 
 import cc.tpark.commons.InnerMsg;
 import cc.tpark.connections.Connections;
+import io.netty.channel.ChannelHandlerContext;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -18,6 +19,16 @@ public class ProtocolCtlTest {
         @Override
         public void sendMsg(String ip, InnerMsg msg) {
             System.out.println("send msg [ ip: " + ip + " msg:" + msg.getMsg() + "]");
+        }
+
+        @Override
+        public boolean addConnect(String ip, ChannelHandlerContext ctx) {
+            return false;
+        }
+
+        @Override
+        public void removeConnect(String ip) {
+
         }
     }
 

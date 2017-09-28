@@ -73,4 +73,8 @@ public class MqttInboundHandler extends JMTHandler<MqttMessage> {
         }
     }
 
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        super.exceptionCaught(ctx, cause);
+    }
 }

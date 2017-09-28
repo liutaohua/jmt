@@ -1,5 +1,9 @@
 package cc.tpark.connections.action.mqtt;
 
+import akka.actor.ActorRef;
+import akka.actor.ActorSelection;
+import akka.actor.ActorSystem;
+import cc.tpark.actor.*;
 import cc.tpark.commons.InnerMsg;
 import cc.tpark.connections.SimpleConnections;
 import cc.tpark.connections.action.JMSAction;
@@ -12,6 +16,9 @@ import java.util.List;
 import static io.netty.handler.codec.mqtt.MqttQoS.*;
 
 public class MqttAction extends JMSAction {
+    private final ActorSystem jmt = ActorContext.instence.getJmt();
+    private final ActorRef connectionManager = ActorContext.instence.getConnectionManager();
+    private final ActorRef topicManager = ActorContext.instence.getTopicManager();
 
     /**
      * 申请链接并保存
@@ -21,20 +28,30 @@ public class MqttAction extends JMSAction {
      */
     public void connection(ChannelHandlerContext ctx, MqttConnectMessage msg) {
         String id = "mqtt:" + ctx.channel().id().asLongText();
-        if (SimpleConnections.INSTENCE.addConnect(id, ctx)) {
+        connectionManager.tell(ConnectionManager.AddConnection.getInstence(id, ctx), ActorRef.noSender());
 
-            MqttFixedHeader header =
-                    new MqttFixedHeader(MqttMessageType.CONNACK, false, AT_MOST_ONCE, false, 0);
-            MqttConnAckVariableHeader mqttConnAckVariableHeader =
-                    new MqttConnAckVariableHeader(MqttConnectReturnCode.CONNECTION_ACCEPTED, false);
-            MqttConnAckMessage mqttConnAckMessage =
-                    new MqttConnAckMessage(header, mqttConnAckVariableHeader);
+        MqttFixedHeader header =
+                new MqttFixedHeader(MqttMessageType.CONNACK, false, AT_MOST_ONCE, false, 0);
+        MqttConnAckVariableHeader mqttConnAckVariableHeader =
+                new MqttConnAckVariableHeader(MqttConnectReturnCode.CONNECTION_ACCEPTED, false);
+        MqttConnAckMessage mqttConnAckMessage =
+                new MqttConnAckMessage(header, mqttConnAckVariableHeader);
 
-            ctx.channel().writeAndFlush(mqttConnAckMessage);
-        } else {
-            ctx.close();
-            System.out.println("连接数已达上限");
-        }
+        connectionManager.tell(ConnectionManager.SendMessage.getInstence(id, mqttConnAckMessage), ActorRef.noSender());
+//        if (SimpleConnections.INSTENCE.addConnect(id, ctx)) {
+//
+//            MqttFixedHeader header =
+//                    new MqttFixedHeader(MqttMessageType.CONNACK, false, AT_MOST_ONCE, false, 0);
+//            MqttConnAckVariableHeader mqttConnAckVariableHeader =
+//                    new MqttConnAckVariableHeader(MqttConnectReturnCode.CONNECTION_ACCEPTED, false);
+//            MqttConnAckMessage mqttConnAckMessage =
+//                    new MqttConnAckMessage(header, mqttConnAckVariableHeader);
+//
+//            ctx.channel().writeAndFlush(mqttConnAckMessage);
+//        } else {
+//            ctx.close();
+//            System.out.println("连接数已达上限");
+//        }
     }
 
     /**
@@ -45,8 +62,9 @@ public class MqttAction extends JMSAction {
      */
     public void disconnect(ChannelHandlerContext ctx, MqttConnectMessage msg) {
         String id = "mqtt:" + ctx.channel().id().asLongText();
-        ctx.close();
-        SimpleConnections.INSTENCE.removeConnect(id);
+        connectionManager.tell(ConnectionManager.DelConnection.getInstence(id), ActorRef.noSender());
+//        ctx.close();
+//        SimpleConnections.INSTENCE.removeConnect(id);
     }
 
     /**
@@ -62,15 +80,18 @@ public class MqttAction extends JMSAction {
         int messageId = msg.variableHeader().messageId();
         for (MqttTopicSubscription mts : mqttTopicSubscriptions) {
             String topicName = mts.topicName();
-            //            MqttQoS mqttQoS = mts.qualityOfService();
-            router.subscribe(topicName, id);
+            topicManager.tell(TopicManager.CreateTopic.getInstence(topicName), ActorRef.noSender());
+            connectionManager.tell(ConnectionManager.SubTopic.getInstence(id, topicName), ActorRef.noSender());
         }
 
         //todo: modify suback (the MqttSubAckPayload )
         MqttMessage mqttSubackMessage = MqttMessageFactory.newMessage(
                 new MqttFixedHeader(MqttMessageType.SUBACK, false, AT_MOST_ONCE, false, 0),
                 MqttMessageIdVariableHeader.from(messageId), new MqttSubAckPayload(0));
-        ctx.channel().writeAndFlush(mqttSubackMessage);
+
+        connectionManager.tell(ConnectionManager.SendMessage.getInstence(id, mqttSubackMessage), ActorRef.noSender());
+
+//        ctx.channel().writeAndFlush(mqttSubackMessage);
     }
 
     /**
@@ -107,37 +128,71 @@ public class MqttAction extends JMSAction {
         String topicName = msg.variableHeader().topicName();
         int messageId = msg.variableHeader().messageId();
         ByteBuf byteBuf = msg.payload();
-        InnerMsg innerMsg = new InnerMsg();
-        //消息来源的IP
-        innerMsg.setIp(id);
-        innerMsg.setTopic(topicName);
-        innerMsg.setMsg(byteBuf.copy());
+
+        MqttFixedHeader header =
+                new MqttFixedHeader(MqttMessageType.PUBLISH, false, MqttQoS.AT_MOST_ONCE, false, 0);
+        MqttPublishVariableHeader mqttPublishVariableHeader =
+                new MqttPublishVariableHeader(topicName, messageId);
+        MqttPublishMessage mqttPublishMessage = new MqttPublishMessage(header, mqttPublishVariableHeader, byteBuf.retain());
+
 
         MqttFixedHeader mqttFixedHeader = null;
         switch (msg.fixedHeader().qosLevel()) {
             case AT_LEAST_ONCE:
-                router.publish(innerMsg);
+                topicManager.tell(TopicManager.PubMessage.getInstence(topicName, mqttPublishMessage), ActorRef.noSender());
                 mqttFixedHeader =
                         new MqttFixedHeader(MqttMessageType.PUBACK, false, AT_LEAST_ONCE, false, 0);
                 break;
             case EXACTLY_ONCE:
-                mqttFixedHeader =
-                        new MqttFixedHeader(MqttMessageType.PUBREC, false, EXACTLY_ONCE, false, 0);
-                if (!msgMap.containsKey(id + "-" + messageId)) {
-                    msgMap.put(id + "-" + messageId, innerMsg);
-                }
+//                mqttFixedHeader =
+//                        new MqttFixedHeader(MqttMessageType.PUBREC, false, EXACTLY_ONCE, false, 0);
+//                if (!msgMap.containsKey(id + "-" + messageId)) {
+//                    msgMap.put(id + "-" + messageId, innerMsg);
+//                }
                 break;
             case AT_MOST_ONCE:
             default:
-                router.publish(innerMsg);
+                topicManager.tell(TopicManager.PubMessage.getInstence(topicName, mqttPublishMessage), ActorRef.noSender());
         }
+
         if (mqttFixedHeader == null) {
             return;
         }
 
         MqttMessage mqttMessage = MqttMessageFactory
                 .newMessage(mqttFixedHeader, MqttMessageIdVariableHeader.from(messageId), null);
-        ctx.channel().writeAndFlush(mqttMessage);
+        connectionManager.tell(ConnectionManager.SendMessage.getInstence(id, mqttMessage), ActorRef.noSender());
+//        InnerMsg innerMsg = new InnerMsg();
+//        //消息来源的IP
+//        innerMsg.setIp(id);
+//        innerMsg.setTopic(topicName);
+//        innerMsg.setMsg(byteBuf.copy());
+//
+//        MqttFixedHeader mqttFixedHeader = null;
+//        switch (msg.fixedHeader().qosLevel()) {
+//            case AT_LEAST_ONCE:
+//                router.publish(innerMsg);
+//                mqttFixedHeader =
+//                        new MqttFixedHeader(MqttMessageType.PUBACK, false, AT_LEAST_ONCE, false, 0);
+//                break;
+//            case EXACTLY_ONCE:
+//                mqttFixedHeader =
+//                        new MqttFixedHeader(MqttMessageType.PUBREC, false, EXACTLY_ONCE, false, 0);
+//                if (!msgMap.containsKey(id + "-" + messageId)) {
+//                    msgMap.put(id + "-" + messageId, innerMsg);
+//                }
+//                break;
+//            case AT_MOST_ONCE:
+//            default:
+//                router.publish(innerMsg);
+//        }
+//        if (mqttFixedHeader == null) {
+//            return;
+//        }
+//
+//        MqttMessage mqttMessage = MqttMessageFactory
+//                .newMessage(mqttFixedHeader, MqttMessageIdVariableHeader.from(messageId), null);
+//        ctx.channel().writeAndFlush(mqttMessage);
     }
 
     /**
@@ -147,10 +202,14 @@ public class MqttAction extends JMSAction {
      */
     public void pingreq(ChannelHandlerContext ctx) {
         String id = "mqtt:" + ctx.channel().id().asLongText();
+
         MqttMessage mqttMessage = new MqttMessage(
                 new MqttFixedHeader(MqttMessageType.PINGRESP, false, EXACTLY_ONCE, false, 0));
-        ctx.writeAndFlush(mqttMessage);
-        SimpleConnections.INSTENCE.restartBreaker(id);
+
+        connectionManager.tell(ConnectionManager.SendMessage.getInstence(id, mqttMessage), ActorRef.noSender());
+
+//        ctx.writeAndFlush(mqttMessage);
+//        SimpleConnections.INSTENCE.restartBreaker(id);
     }
 
     /**

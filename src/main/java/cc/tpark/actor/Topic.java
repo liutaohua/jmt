@@ -6,6 +6,8 @@ import akka.routing.ActorRefRoutee;
 import akka.routing.RoundRobinRoutingLogic;
 import akka.routing.Routee;
 import akka.routing.Router;
+import io.netty.buffer.ByteBuf;
+import io.netty.handler.codec.mqtt.MqttMessage;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +27,8 @@ public class Topic extends AbstractActor {
         return receiveBuilder().match(AddClient.class, (client) -> {
             getContext().watch(client.r);
             router = router.addRoutee(new ActorRefRoutee(client.r));
-        }).match(String.class, (s) -> {
+        }).match(MqttMessage.class, (s) -> {
+            System.out.println("路由器" + getSelf().path() + "中转消息");
             router.route(s, getSelf());
         }).match(RemoveClient.class, (client) -> {
             router = router.removeRoutee(new ActorRefRoutee(client.r));
