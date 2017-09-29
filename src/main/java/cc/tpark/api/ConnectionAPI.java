@@ -1,7 +1,6 @@
 package cc.tpark.api;
 
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.mqtt.MqttConnAckMessage;
 import io.netty.handler.codec.mqtt.MqttMessage;
 
 public interface ConnectionAPI {
@@ -16,4 +15,8 @@ public interface ConnectionAPI {
     void delConn(String id);
 
     boolean checkServerStatus();
+
+    void subTopic(String id, String topic);
+
+    void unsubTopic(String id, String topic);
 }

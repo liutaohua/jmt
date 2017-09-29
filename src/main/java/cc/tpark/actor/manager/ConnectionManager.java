@@ -33,8 +33,8 @@ public class ConnectionManager extends AbstractActor {
                 }).match(DelConnection.class, delConnection -> {
                     Option<ActorRef> child = getContext().child(delConnection.id);
                     if (!child.isEmpty()) {
-                        getContext().stop(child.get());
                         getContext().unwatch(child.get());
+                        getContext().stop(child.get());
                         connNumCount.getAndDecrement();
                     }
                 }).match(SubTopic.class, subTopic -> {
@@ -42,6 +42,15 @@ public class ConnectionManager extends AbstractActor {
                     if (!child.isEmpty()) {
                         ActorSelection topic = getContext().system().actorSelection(TopicManager.TopicPath + subTopic.topicName);
                         topic.tell(TopicRouter.AddClient.getInstence(child.get()), getSelf());
+                    }
+                }).match(UnsubTopic.class, unsubTopic -> {
+                    Option<ActorRef> child = getContext().child(unsubTopic.id);
+                    if (!child.isEmpty()) {
+                        ActorSelection topic = getContext().system().actorSelection(TopicManager.TopicPath + unsubTopic.topicName);
+                        topic.tell(TopicRouter.RemoveClient.getInstence(child.get()), getSelf());
+                        getSender().tell(true, getSelf());
+                    } else {
+                        getSender().tell(false, getSelf());
                     }
                 }).match(IsAlive.class, isAlive -> {
                     Option<ActorRef> child = getContext().child(isAlive.id);
@@ -96,6 +105,21 @@ public class ConnectionManager extends AbstractActor {
             return new SubTopic(id, topicName);
         }
     }
+
+    public static class UnsubTopic {
+        private String id;
+        private String topicName;
+
+        private UnsubTopic(String id, String topicName) {
+            this.id = id;
+            this.topicName = topicName;
+        }
+
+        public static UnsubTopic getInstence(String id, String topicName) {
+            return new UnsubTopic(id, topicName);
+        }
+    }
+
 
     public static class SendMessage {
         private String id;

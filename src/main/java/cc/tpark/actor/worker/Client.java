@@ -39,7 +39,9 @@ public class Client extends AbstractActorWithTimers {
     public void postStop() throws Exception {
         System.out.println("i will die..." + getSelf().path().name());
         super.postStop();
-        ctx.close();
+        if (ctx.channel().isActive()) {
+            ctx.close();
+        }
     }
 
     private static final class FirstTick {

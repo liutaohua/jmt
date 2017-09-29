@@ -18,18 +18,21 @@ public class TopicManager extends AbstractActor {
                     if (getContext().child(topic.topic).isEmpty()) {
                         ActorRef actorRef = getContext().actorOf(Props.create(TopicRouter.class), topic.topic);
                         getContext().watch(actorRef);
+                        getSender().tell(true, getSelf());
                     }
                 }).match(DeleteTopic.class, (topic) -> {
                     Option<ActorRef> actorRef = getContext().child(topic.topic);
                     if (!actorRef.isEmpty()) {
                         actorRef.get().tell(Kill.getInstance(), getSelf());
                         getContext().unwatch(actorRef.get());
+                        getSender().tell(true, getSelf());
                     }
                 }).match(PubMessage.class, pubMessage -> {
                     Option<ActorRef> actorRef = getContext().child(pubMessage.topic);
                     if (!actorRef.isEmpty()) {
                         System.out.println("发布消息到" + actorRef.get().path());
                         actorRef.get().tell(pubMessage.msg, getSelf());
+                        getSender().tell(true, getSelf());
                     }
                 })
                 .build();

@@ -1,15 +1,18 @@
 package cc.tpark.session.protocol.mqtt;
 
 import cc.tpark.ApplicationContext;
-import cc.tpark.actor.ActorConnAPi;
 import cc.tpark.api.ConnectionAPI;
+import cc.tpark.api.TopicAPI;
 import cc.tpark.netty.NettyUtil;
 import cc.tpark.session.protocol.IJMSAction;
-import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.mqtt.*;
+
+import java.util.List;
 
 public class MqttAction implements IJMSAction {
     private final ConnectionAPI connectionAPI = ApplicationContext.instence.getConnectionAPI();
+    private final TopicAPI topicAPI = ApplicationContext.instence.getTopicAPI();
+
 
     @Override
     public void connection(String id, MqttConnectMessage msg) {
@@ -30,6 +33,7 @@ public class MqttAction implements IJMSAction {
             //connectionAPI.delConn(id);
             //connectionAPI.createConn(id);
             connectionAPI.sendMesssage(id, NettyUtil.getConnAckMsg(MqttConnectReturnCode.CONNECTION_ACCEPTED, false));
+            System.out.println(id + " 已经成功连接");
             return;
         }
         //cleansession 为false，这时候判断是否缓存了session
@@ -38,26 +42,59 @@ public class MqttAction implements IJMSAction {
         } else {
             connectionAPI.sendMesssage(id, NettyUtil.getConnAckMsg(MqttConnectReturnCode.CONNECTION_ACCEPTED, false));
         }
+        System.out.println(id + " 已经成功连接");
     }
 
     @Override
-    public void disconnect(ChannelHandlerContext ctx, MqttConnectMessage msg) {
-
+    public void disconnect(String id, MqttConnectMessage msg) {
+        connectionAPI.delConn(id);
+        System.out.println(id + " 已经成功断开连接");
     }
 
     @Override
-    public void subscribe(ChannelHandlerContext ctx, MqttSubscribeMessage msg) {
-
+    public void subscribe(String id, MqttSubscribeMessage msg) {
+        int messageId = msg.variableHeader().messageId();
+        List<MqttTopicSubscription> topics = msg.payload().topicSubscriptions();
+        boolean isFail = false;
+        for (MqttTopicSubscription t : topics) {
+            if (!topicAPI.createTopic(t.topicName())) {
+                isFail = true;
+                break;
+            }
+        }
+        if (isFail) {
+            connectionAPI.sendMesssage(id, NettyUtil.getSubAckMsg(messageId, isFail));
+            System.out.println(id + " 订阅失败... ");
+            return;
+        }
+        String topicLString = "";
+        for (MqttTopicSubscription t : topics) {
+            connectionAPI.subTopic(id, t.topicName());
+            topicLString += t.toString() + ", ";
+        }
+        connectionAPI.sendMesssage(id, NettyUtil.getSubAckMsg(messageId, false));
+        System.out.println(id + " 已订阅 " + topicLString.substring(1, topicLString.length() - 1));
     }
 
     @Override
-    public void unsubscribe(ChannelHandlerContext ctx, MqttUnsubscribeMessage msg) {
-
+    public void unsubscribe(String id, MqttUnsubscribeMessage msg) {
+        int messageId = msg.variableHeader().messageId();
+        List<String> topics = msg.payload().topics();
+        for (String t : topics) {
+            connectionAPI.unsubTopic(id, t);
+        }
+        connectionAPI.sendMesssage(id, NettyUtil.getUnsubAckMsg(messageId));
+        System.out.println(id + " 已取消订阅 ");
     }
 
     @Override
-    public void publish(ChannelHandlerContext ctx, MqttPublishMessage msg) {
-
+    public void publish(String id, MqttPublishMessage msg) {
+        String topic = msg.variableHeader().topicName();
+        if (topicAPI.publishMsg(topic, msg.retain())) {
+            System.out.println("已经成功向[" + topic + "] 发送消息");
+        } else {
+            System.out.println("向[" + topic + "] 发送消息失败");
+        }
     }
 
     @Override
@@ -66,7 +103,7 @@ public class MqttAction implements IJMSAction {
     }
 
     @Override
-    public void pubrel(ChannelHandlerContext ctx, MqttMessage msg) throws Exception {
+    public void pubrel(String id, MqttMessage msg) throws Exception {
 
     }
 }

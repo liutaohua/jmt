@@ -1,11 +1,9 @@
-package cc.tpark.actor;
+package cc.tpark.actor.api;
 
 import akka.actor.ActorRef;
-import cc.tpark.ApplicationContext;
 import cc.tpark.actor.manager.ConnectionManager;
 import cc.tpark.api.ConnectionAPI;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.mqtt.MqttConnAckMessage;
 import io.netty.handler.codec.mqtt.MqttMessage;
 
 import java.util.concurrent.CompletableFuture;
@@ -13,11 +11,11 @@ import java.util.concurrent.ExecutionException;
 
 import static akka.pattern.PatternsCS.ask;
 
-public class ActorConnAPi implements ConnectionAPI {
+public class ActorConnAPI implements ConnectionAPI {
     private final ActorRef connManager;
     private static final int DEFAULT_TIMEOUT = 3000;
 
-    public ActorConnAPi(ActorRef connManager) {
+    public ActorConnAPI(ActorRef connManager) {
         this.connManager = connManager;
     }
 
@@ -35,6 +33,16 @@ public class ActorConnAPi implements ConnectionAPI {
             return false;
         }
         return isOk;
+    }
+
+    @Override
+    public void subTopic(String id, String topic) {
+        ask(connManager, ConnectionManager.SubTopic.getInstence(id, topic), DEFAULT_TIMEOUT);
+    }
+
+    @Override
+    public void unsubTopic(String id, String topic) {
+        ask(connManager, ConnectionManager.UnsubTopic.getInstence(id, topic), DEFAULT_TIMEOUT);
     }
 
     @Override
@@ -70,7 +78,7 @@ public class ActorConnAPi implements ConnectionAPI {
 
     @Override
     public void delConn(String id) {
-
+        ask(connManager, ConnectionManager.DelConnection.getInstence(id), DEFAULT_TIMEOUT);
     }
 
     @Override

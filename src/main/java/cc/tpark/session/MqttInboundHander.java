@@ -1,7 +1,6 @@
 package cc.tpark.session;
 
 import cc.tpark.ApplicationContext;
-import cc.tpark.actor.ActorConnAPi;
 import cc.tpark.api.ConnectionAPI;
 import cc.tpark.netty.NettyUtil;
 import cc.tpark.session.protocol.MessageVistor;

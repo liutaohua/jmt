@@ -3,10 +3,12 @@ package cc.tpark;
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
-import cc.tpark.actor.ActorConnAPi;
+import cc.tpark.actor.api.ActorConnAPI;
+import cc.tpark.actor.api.ActorTopicAPI;
 import cc.tpark.actor.manager.ConnectionManager;
 import cc.tpark.actor.manager.TopicManager;
 import cc.tpark.api.ConnectionAPI;
+import cc.tpark.api.TopicAPI;
 
 public enum ApplicationContext {
     instence;
@@ -16,12 +18,14 @@ public enum ApplicationContext {
     private final ActorRef topicManager;
 
     private final ConnectionAPI connectionAPI;
+    private TopicAPI topicAPI;
 
     ApplicationContext() {
         jmt = ActorSystem.create("jmt");
         connectionManager = jmt.actorOf(Props.create(ConnectionManager.class), "connections");
         topicManager = jmt.actorOf(Props.create(TopicManager.class), "topics");
-        connectionAPI = new ActorConnAPi(connectionManager);
+        connectionAPI = new ActorConnAPI(connectionManager);
+        topicAPI = new ActorTopicAPI(topicManager);
     }
 
     public ActorSystem getJmt() {
@@ -38,5 +42,9 @@ public enum ApplicationContext {
 
     public ConnectionAPI getConnectionAPI() {
         return connectionAPI;
+    }
+
+    public TopicAPI getTopicAPI() {
+        return topicAPI;
     }
 }

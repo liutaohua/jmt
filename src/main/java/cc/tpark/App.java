@@ -1,6 +1,5 @@
 package cc.tpark;
 
-import cc.tpark.actor.manager.ConnectionManager;
 import cc.tpark.api.ConnectionAPI;
 import cc.tpark.netty.NettyServer;
 

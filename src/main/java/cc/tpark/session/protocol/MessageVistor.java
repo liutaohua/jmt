@@ -2,10 +2,7 @@ package cc.tpark.session.protocol;
 
 import cc.tpark.session.protocol.mqtt.MqttAction;
 import cc.tpark.session.protocol.mqtt.MqttMsgElement;
-import io.netty.handler.codec.mqtt.MqttConnectMessage;
-import io.netty.handler.codec.mqtt.MqttFixedHeader;
-import io.netty.handler.codec.mqtt.MqttMessage;
-import io.netty.handler.codec.mqtt.MqttMessageType;
+import io.netty.handler.codec.mqtt.*;
 
 public class MessageVistor implements IVistor {
     private final IJMSAction action = new MqttAction();
@@ -21,24 +18,22 @@ public class MessageVistor implements IVistor {
         MqttMessageType mqttMessageType = header.messageType();
         switch (mqttMessageType) {
             case CONNECT:
-                System.out.println("连接成功");
                 action.connection(id, (MqttConnectMessage) msg);
                 break;
             case SUBSCRIBE:
-                System.out.println("成功订阅");
+                action.subscribe(id, (MqttSubscribeMessage) msg);
                 break;
             case UNSUBSCRIBE:
-                System.out.println("退订方法");
+                action.unsubscribe(id, (MqttUnsubscribeMessage) msg);
                 break;
             case PUBLISH:
-                System.out.println("发布信息方法");
+                action.publish(id, (MqttPublishMessage) msg);
                 break;
             case DISCONNECT:
-                System.out.println("发布信息方法");
+                action.disconnect(id, (MqttConnectMessage) msg);
                 break;
             case PINGREQ:
                 action.pingreq(id);
-                System.out.println("回复心跳");
                 break;
             case PUBREL:
                 System.out.println("PUBREL回复");
