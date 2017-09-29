@@ -2,6 +2,7 @@ package cc.tpark.actor;
 
 import akka.actor.AbstractActorWithTimers;
 import akka.actor.Props;
+import cc.tpark.actor.manager.ConnectionManager;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.mqtt.MqttMessage;
@@ -33,6 +34,8 @@ public class Client extends AbstractActorWithTimers {
         }).match(ByteBuf.class, byteBuf -> {
 
             ctx.writeAndFlush(byteBuf);
+        }).matchAny(o -> {
+            getSender().tell("a", getSelf());
         }).build();
     }
 

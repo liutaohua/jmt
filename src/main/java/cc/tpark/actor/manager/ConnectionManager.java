@@ -1,8 +1,10 @@
-package cc.tpark.actor;
+package cc.tpark.actor.manager;
 
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.ActorSelection;
+import cc.tpark.actor.Client;
+import cc.tpark.actor.router.TopicRouter;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import scala.Option;
@@ -12,15 +14,14 @@ public class ConnectionManager extends AbstractActor {
     public Receive createReceive() {
         return receiveBuilder()
                 .match(AddConnection.class, addConnection -> {
-                    getContext().getChildren().forEach(actorRef -> {
-                        System.out.println(actorRef.toString());
-                    });
                     ActorRef actorRef = getContext().actorOf(Client.props(addConnection.ctx), addConnection.id);
                     getContext().watch(actorRef);
+                    getSender().tell(true, getSelf());
                 }).match(SendMessage.class, sendMessage -> {
                     Option<ActorRef> child = getContext().child(sendMessage.id);
                     if (!child.isEmpty()) {
                         child.get().tell(sendMessage.msg, getSelf());
+                        getSender().tell(true, getSelf());
                     }
                 }).match(DelConnection.class, delConnection -> {
                     Option<ActorRef> child = getContext().child(delConnection.id);
@@ -32,7 +33,14 @@ public class ConnectionManager extends AbstractActor {
                     Option<ActorRef> child = getContext().child(subTopic.id);
                     if (!child.isEmpty()) {
                         ActorSelection topic = getContext().system().actorSelection(TopicManager.TopicPath + subTopic.topicName);
-                        topic.tell(Topic.AddClient.getInstence(child.get()), getSelf());
+                        topic.tell(TopicRouter.AddClient.getInstence(child.get()), getSelf());
+                    }
+                }).match(IsAlive.class, isAlive -> {
+                    Option<ActorRef> child = getContext().child(isAlive.id);
+                    if (!child.isEmpty()) {
+                        getSender().tell(true, getSelf());
+                    } else {
+                        getSender().tell(false, getSelf());
                     }
                 })
                 .build();
@@ -90,6 +98,18 @@ public class ConnectionManager extends AbstractActor {
 
         public static SendMessage getInstence(String id, MqttMessage msg) {
             return new SendMessage(id, msg);
+        }
+    }
+
+    public static class IsAlive {
+        private String id;
+
+        private IsAlive(String id) {
+            this.id = id;
+        }
+
+        public static IsAlive getInstence(String id) {
+            return new IsAlive(id);
         }
     }
 }

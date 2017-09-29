@@ -1,16 +1,13 @@
 package cc.tpark;
 
-import cc.tpark.connections.NettyServer;
-import cc.tpark.connections.initializer.JMSServerInitializerFactory;
-import cc.tpark.connections.initializer.mqtt.MqttServerInitializer;
+import cc.tpark.netty.NettyServer;
 
 /**
  * Hello world!
  */
 public class App {
     public static void main(String[] args) throws InterruptedException {
-        JMSServerInitializerFactory.addServerInitializer("mqtt", new MqttServerInitializer());
-        NettyServer nettyServer = new NettyServer(1883, "mqtt");
+        NettyServer nettyServer = new NettyServer(1883);
         nettyServer.start();
         nettyServer.join();
     }

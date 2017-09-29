@@ -1,4 +1,4 @@
-package cc.tpark.actor;
+package cc.tpark.actor.router;
 
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
@@ -12,7 +12,7 @@ import io.netty.handler.codec.mqtt.MqttMessage;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Topic extends AbstractActor {
+public class TopicRouter extends AbstractActor {
 
     Router router;
 

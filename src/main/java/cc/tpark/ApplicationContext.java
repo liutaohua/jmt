@@ -1,16 +1,19 @@
-package cc.tpark.actor;
+package cc.tpark;
 
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
+import cc.tpark.actor.manager.ConnectionManager;
+import cc.tpark.actor.manager.TopicManager;
 
-public enum ActorContext {
+public enum ApplicationContext {
     instence;
+
     private final ActorSystem jmt;
     private final ActorRef connectionManager;
     private final ActorRef topicManager;
 
-    ActorContext() {
+    ApplicationContext() {
         jmt = ActorSystem.create("jmt");
         connectionManager = jmt.actorOf(Props.create(ConnectionManager.class), "connections");
         topicManager = jmt.actorOf(Props.create(TopicManager.class), "topics");
@@ -27,4 +30,5 @@ public enum ActorContext {
     public ActorRef getTopicManager() {
         return topicManager;
     }
+
 }

@@ -1,10 +1,10 @@
-package cc.tpark.actor;
+package cc.tpark.actor.manager;
 
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Kill;
 import akka.actor.Props;
-import io.netty.buffer.ByteBuf;
+import cc.tpark.actor.router.TopicRouter;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import scala.Option;
 
@@ -16,7 +16,7 @@ public class TopicManager extends AbstractActor {
         return receiveBuilder()
                 .match(CreateTopic.class, (topic) -> {
                     if (getContext().child(topic.topic).isEmpty()) {
-                        ActorRef actorRef = getContext().actorOf(Props.create(Topic.class), topic.topic);
+                        ActorRef actorRef = getContext().actorOf(Props.create(TopicRouter.class), topic.topic);
                         getContext().watch(actorRef);
                     }
                 }).match(DeleteTopic.class, (topic) -> {

@@ -1,33 +1,31 @@
-package cc.tpark.router;
-
-import cc.tpark.commons.InnerMsg;
+package cc.tpark.api;
 
 import java.util.List;
 
-public interface Router {
+public interface RouterAPI {
     /**
      * 发布消息
      *
      * @param msg
      */
-    void publish(InnerMsg msg);
+    void publish(Object msg);
 
     /**
      * 订阅消息
      *
      * @param topic
-     * @param ip
+     * @param id
      */
-    void subscribe(String topic, String ip);
+    void subscribe(String topic, String id);
 
 
     /**
      * 取消订阅
      *
      * @param topic
-     * @param ip
+     * @param id
      */
-    void desubscribe(String topic, String ip);
+    void desubscribe(String topic, String id);
 
     /**
      * 获取topic下的所有订阅成员
