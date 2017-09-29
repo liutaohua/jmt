@@ -1,5 +1,6 @@
 package cc.tpark.session;
 
+import cc.tpark.ApplicationContext;
 import cc.tpark.actor.ActorConnAPi;
 import cc.tpark.api.ConnectionAPI;
 import cc.tpark.netty.NettyUtil;
@@ -11,7 +12,7 @@ import io.netty.handler.codec.mqtt.MqttMessage;
 
 public class MqttInboundHander extends SimpleChannelInboundHandler<MqttMessage> {
     private static final MessageVistor vistor = new MessageVistor();
-    private static final ConnectionAPI connApi = new ActorConnAPi();
+    private static final ConnectionAPI connApi = ApplicationContext.instence.getConnectionAPI();
     private final int MaxConnNum = 1000;
 
     @Override

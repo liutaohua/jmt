@@ -3,31 +3,39 @@ package cc.tpark.actor.manager;
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.ActorSelection;
-import cc.tpark.actor.Client;
+import cc.tpark.actor.worker.Client;
 import cc.tpark.actor.router.TopicRouter;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import scala.Option;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class ConnectionManager extends AbstractActor {
+    private final AtomicInteger connNumCount = new AtomicInteger(0);
+
     @Override
     public Receive createReceive() {
         return receiveBuilder()
                 .match(AddConnection.class, addConnection -> {
                     ActorRef actorRef = getContext().actorOf(Client.props(addConnection.ctx), addConnection.id);
                     getContext().watch(actorRef);
+                    connNumCount.getAndIncrement();
                     getSender().tell(true, getSelf());
                 }).match(SendMessage.class, sendMessage -> {
                     Option<ActorRef> child = getContext().child(sendMessage.id);
                     if (!child.isEmpty()) {
                         child.get().tell(sendMessage.msg, getSelf());
                         getSender().tell(true, getSelf());
+                    } else {
+                        getSender().tell(false, getSelf());
                     }
                 }).match(DelConnection.class, delConnection -> {
                     Option<ActorRef> child = getContext().child(delConnection.id);
                     if (!child.isEmpty()) {
                         getContext().stop(child.get());
                         getContext().unwatch(child.get());
+                        connNumCount.getAndDecrement();
                     }
                 }).match(SubTopic.class, subTopic -> {
                     Option<ActorRef> child = getContext().child(subTopic.id);
@@ -42,6 +50,8 @@ public class ConnectionManager extends AbstractActor {
                     } else {
                         getSender().tell(false, getSelf());
                     }
+                }).match(GetConnNum.class, o -> {
+                    getSender().tell(connNumCount.get(), getSelf());
                 })
                 .build();
     }
@@ -110,6 +120,12 @@ public class ConnectionManager extends AbstractActor {
 
         public static IsAlive getInstence(String id) {
             return new IsAlive(id);
+        }
+    }
+
+    public static class GetConnNum {
+        public static GetConnNum getInstence() {
+            return new GetConnNum();
         }
     }
 }

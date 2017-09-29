@@ -14,7 +14,7 @@ public interface IJMSAction {
 
     void publish(ChannelHandlerContext ctx, MqttPublishMessage msg);
 
-    void pingreq(ChannelHandlerContext ctx);
+    void pingreq(String id);
 
     void pubrel(ChannelHandlerContext ctx, MqttMessage msg) throws Exception;
 }

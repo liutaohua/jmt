@@ -3,6 +3,7 @@ package cc.tpark.session.protocol;
 import cc.tpark.session.protocol.mqtt.MqttAction;
 import cc.tpark.session.protocol.mqtt.MqttMsgElement;
 import io.netty.handler.codec.mqtt.MqttConnectMessage;
+import io.netty.handler.codec.mqtt.MqttFixedHeader;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.handler.codec.mqtt.MqttMessageType;
 
@@ -13,7 +14,11 @@ public class MessageVistor implements IVistor {
     public void visit(MqttMsgElement msgElement) {
         MqttMessage msg = msgElement.getMsg();
         String id = msgElement.getId();
-        MqttMessageType mqttMessageType = msg.fixedHeader().messageType();
+        MqttFixedHeader header = msg.fixedHeader();
+        if (header == null) {
+            return;
+        }
+        MqttMessageType mqttMessageType = header.messageType();
         switch (mqttMessageType) {
             case CONNECT:
                 System.out.println("连接成功");
@@ -32,6 +37,7 @@ public class MessageVistor implements IVistor {
                 System.out.println("发布信息方法");
                 break;
             case PINGREQ:
+                action.pingreq(id);
                 System.out.println("回复心跳");
                 break;
             case PUBREL:

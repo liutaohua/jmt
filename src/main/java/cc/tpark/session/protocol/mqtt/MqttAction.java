@@ -1,5 +1,6 @@
 package cc.tpark.session.protocol.mqtt;
 
+import cc.tpark.ApplicationContext;
 import cc.tpark.actor.ActorConnAPi;
 import cc.tpark.api.ConnectionAPI;
 import cc.tpark.netty.NettyUtil;
@@ -8,11 +9,10 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.mqtt.*;
 
 public class MqttAction implements IJMSAction {
-    private final ConnectionAPI connectionAPI = new ActorConnAPi();
+    private final ConnectionAPI connectionAPI = ApplicationContext.instence.getConnectionAPI();
 
     @Override
     public void connection(String id, MqttConnectMessage msg) {
-
         //连接前检查
         boolean isok = connectionAPI.checkServerStatus();
         if (!isok) {
@@ -61,8 +61,8 @@ public class MqttAction implements IJMSAction {
     }
 
     @Override
-    public void pingreq(ChannelHandlerContext ctx) {
-
+    public void pingreq(String id) {
+        connectionAPI.sendMesssage(id, NettyUtil.getHeartbeatMsg());
     }
 
     @Override

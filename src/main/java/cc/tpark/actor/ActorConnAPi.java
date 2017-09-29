@@ -6,6 +6,7 @@ import cc.tpark.actor.manager.ConnectionManager;
 import cc.tpark.api.ConnectionAPI;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.mqtt.MqttConnAckMessage;
+import io.netty.handler.codec.mqtt.MqttMessage;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -13,14 +14,19 @@ import java.util.concurrent.ExecutionException;
 import static akka.pattern.PatternsCS.ask;
 
 public class ActorConnAPi implements ConnectionAPI {
-    private final ActorRef connManager = ApplicationContext.instence.getConnectionManager();
+    private final ActorRef connManager;
+    private static final int DEFAULT_TIMEOUT = 3000;
+
+    public ActorConnAPi(ActorRef connManager) {
+        this.connManager = connManager;
+    }
 
     @Override
     public boolean createConn(String id, ChannelHandlerContext ctx) {
         if (isAlive(id)) {
             return true;
         }
-        CompletableFuture<Object> feture = ask(connManager, ConnectionManager.AddConnection.getInstence(id, ctx), 3000)
+        CompletableFuture<Object> feture = ask(connManager, ConnectionManager.AddConnection.getInstence(id, ctx), DEFAULT_TIMEOUT)
                 .toCompletableFuture();
         boolean isOk;
         try {
@@ -33,18 +39,25 @@ public class ActorConnAPi implements ConnectionAPI {
 
     @Override
     public int getConnNum() {
-        return 0;
+        CompletableFuture<Object> feture = ask(connManager, ConnectionManager.GetConnNum.getInstence(), DEFAULT_TIMEOUT)
+                .toCompletableFuture();
+        int num = -1;
+        try {
+            num = (int) feture.get();
+        } catch (InterruptedException | ExecutionException e) {
+            return -1;
+        }
+        return num;
     }
 
     @Override
-    public void sendMesssage(String id, MqttConnAckMessage mqttConnAckMessage) {
-        CompletableFuture<Object> feture = ask(connManager, ConnectionManager.SendMessage.getInstence(id, mqttConnAckMessage), 3000)
-                .toCompletableFuture();
+    public void sendMesssage(String id, MqttMessage mqttMessage) {
+        ask(connManager, ConnectionManager.SendMessage.getInstence(id, mqttMessage), DEFAULT_TIMEOUT);
     }
 
     @Override
     public boolean isAlive(String id) {
-        CompletableFuture<Object> feture = ask(connManager, ConnectionManager.IsAlive.getInstence(id), 1000)
+        CompletableFuture<Object> feture = ask(connManager, ConnectionManager.IsAlive.getInstence(id), DEFAULT_TIMEOUT)
                 .toCompletableFuture();
         boolean isAlive;
         try {
