@@ -3,7 +3,6 @@ package cc.tpark.actor.manager;
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Kill;
-import akka.actor.Props;
 import cc.tpark.actor.router.TopicRouter;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import scala.Option;
@@ -16,10 +15,10 @@ public class TopicManager extends AbstractActor {
         return receiveBuilder()
                 .match(CreateTopic.class, (topic) -> {
                     if (getContext().child(topic.topic).isEmpty()) {
-                        ActorRef actorRef = getContext().actorOf(Props.create(TopicRouter.class), topic.topic);
+                        ActorRef actorRef = getContext().actorOf(TopicRouter.props(), topic.topic);
                         getContext().watch(actorRef);
-                        getSender().tell(true, getSelf());
                     }
+                    getSender().tell(true, getSelf());
                 }).match(DeleteTopic.class, (topic) -> {
                     Option<ActorRef> actorRef = getContext().child(topic.topic);
                     if (!actorRef.isEmpty()) {
@@ -32,7 +31,14 @@ public class TopicManager extends AbstractActor {
                     if (!actorRef.isEmpty()) {
                         System.out.println("发布消息到" + actorRef.get().path());
                         actorRef.get().tell(pubMessage.msg, getSelf());
-                        getSender().tell(true, getSelf());
+//                        getSender().tell(true, getSelf());
+                    }
+                }).match(GetTopic.class, getTopic -> {
+                    Option<ActorRef> child = getContext().child(getTopic.topic);
+                    if (child.isEmpty()) {
+                        getSender().tell("", getSelf());
+                    } else {
+                        getSender().tell(child.get(), getSelf());
                     }
                 })
                 .build();
@@ -50,6 +56,18 @@ public class TopicManager extends AbstractActor {
         }
     }
 
+    public static class GetTopic {
+        private String topic;
+
+        public static GetTopic getInstence(String topic) {
+            return new GetTopic(topic);
+        }
+
+        public GetTopic(String topic) {
+            this.topic = topic;
+        }
+    }
+
     public static class DeleteTopic {
         private String topic;
 
@@ -61,6 +79,7 @@ public class TopicManager extends AbstractActor {
             this.topic = topic;
         }
     }
+
 
     public static class PubMessage {
         private String topic;

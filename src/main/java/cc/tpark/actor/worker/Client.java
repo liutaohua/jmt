@@ -7,6 +7,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.handler.codec.mqtt.MqttMessageType;
+import io.netty.handler.codec.mqtt.MqttPublishMessage;
 import scala.concurrent.duration.Duration;
 
 import java.util.concurrent.TimeUnit;
@@ -24,6 +25,10 @@ public class Client extends AbstractActorWithTimers {
             if (MqttMessageType.PINGRESP == s.fixedHeader().messageType()) {
                 getTimers().cancelAll();
                 getTimers().startSingleTimer("test", new FirstTick(), Duration.create(30000, TimeUnit.MILLISECONDS));
+            }
+            if (s instanceof MqttPublishMessage) {
+                MqttPublishMessage publishMessage = (MqttPublishMessage) s;
+                publishMessage.retain();
             }
             ctx.writeAndFlush(s);
         }).match(FirstTick.class, firstTick -> {

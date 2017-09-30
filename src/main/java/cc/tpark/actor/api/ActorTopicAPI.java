@@ -57,14 +57,16 @@ public class ActorTopicAPI implements TopicAPI {
 
     @Override
     public boolean publishMsg(String topic, MqttMessage msg) {
-        CompletableFuture<Object> feture = ask(topicManager, TopicManager.PubMessage.getInstence(topic, msg), DEFAULT_TIMEOUT)
-                .toCompletableFuture();
-        boolean isOk;
-        try {
-            isOk = (boolean) feture.get();
-        } catch (InterruptedException | ExecutionException e) {
-            return false;
-        }
-        return isOk;
+        topicManager.tell(TopicManager.PubMessage.getInstence(topic, msg), ActorRef.noSender());
+//        CompletableFuture<Object> feture = ask(topicManager, TopicManager.PubMessage.getInstence(topic, msg), DEFAULT_TIMEOUT)
+//                .toCompletableFuture();
+//        boolean isOk;
+//        try {
+//            isOk = (boolean) feture.get();
+//        } catch (InterruptedException | ExecutionException e) {
+//            return false;
+//        }
+//        return isOk;
+        return true;
     }
 }

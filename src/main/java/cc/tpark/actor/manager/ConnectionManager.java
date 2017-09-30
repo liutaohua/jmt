@@ -3,16 +3,22 @@ package cc.tpark.actor.manager;
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.ActorSelection;
+import cc.tpark.ApplicationContext;
 import cc.tpark.actor.worker.Client;
 import cc.tpark.actor.router.TopicRouter;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import scala.Option;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static akka.pattern.PatternsCS.ask;
+
 
 public class ConnectionManager extends AbstractActor {
     private final AtomicInteger connNumCount = new AtomicInteger(0);
+    private final ActorRef topicManager = ApplicationContext.instence.getTopicManager();
 
     @Override
     public Receive createReceive() {
@@ -46,8 +52,15 @@ public class ConnectionManager extends AbstractActor {
                 }).match(UnsubTopic.class, unsubTopic -> {
                     Option<ActorRef> child = getContext().child(unsubTopic.id);
                     if (!child.isEmpty()) {
-                        ActorSelection topic = getContext().system().actorSelection(TopicManager.TopicPath + unsubTopic.topicName);
-                        topic.tell(TopicRouter.RemoveClient.getInstence(child.get()), getSelf());
+                        CompletableFuture<Object> future = ask(topicManager,
+                                TopicManager.GetTopic.getInstence(unsubTopic.topicName), 3000)
+                                .toCompletableFuture();
+                        Object o = future.get();
+//                        ActorSelection topic = getContext().system().actorSelection(TopicManager.TopicPath + unsubTopic.topicName);
+                        if (o instanceof ActorRef) {
+                            ActorRef topic = (ActorRef) future.get();
+                            topic.tell(TopicRouter.RemoveClient.getInstence(child.get()), getSelf());
+                        }
                         getSender().tell(true, getSelf());
                     } else {
                         getSender().tell(false, getSelf());

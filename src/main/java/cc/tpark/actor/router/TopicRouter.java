@@ -2,11 +2,11 @@ package cc.tpark.actor.router;
 
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
+import akka.actor.Props;
 import akka.routing.ActorRefRoutee;
-import akka.routing.RoundRobinRoutingLogic;
+import akka.routing.BroadcastRoutingLogic;
 import akka.routing.Routee;
 import akka.routing.Router;
-import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.MqttMessage;
 
 import java.util.ArrayList;
@@ -18,18 +18,21 @@ public class TopicRouter extends AbstractActor {
 
     {
         List<Routee> routees = new ArrayList<>();
-        router = new Router(new RoundRobinRoutingLogic(), routees);
+        router = new Router(new BroadcastRoutingLogic(), routees);
+    }
+
+
+    public static Props props() {
+        return Props.create(TopicRouter.class, () -> new TopicRouter());
     }
 
 
     @Override
     public Receive createReceive() {
         return receiveBuilder().match(AddClient.class, (client) -> {
-            getContext().watch(client.r);
             router = router.addRoutee(new ActorRefRoutee(client.r));
         }).match(MqttMessage.class, (s) -> {
-            System.out.println("路由器" + getSelf().path() + "中转消息");
-            router.route(s, getSelf());
+            router.route(s, getSender());
         }).match(RemoveClient.class, (client) -> {
             router = router.removeRoutee(new ActorRefRoutee(client.r));
         }).build();

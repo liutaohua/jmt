@@ -100,6 +100,7 @@ public class MqttAction implements IJMSAction {
     @Override
     public void pingreq(String id) {
         connectionAPI.sendMesssage(id, NettyUtil.getHeartbeatMsg());
+        System.out.println(id + " 心跳一次");
     }
 
     @Override
